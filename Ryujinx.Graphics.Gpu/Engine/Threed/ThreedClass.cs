@@ -1,5 +1,6 @@
 ﻿using Ryujinx.Graphics.Device;
 using Ryujinx.Graphics.GAL;
+using Ryujinx.Graphics.Gpu.Engine.GPFifo;
 using Ryujinx.Graphics.Gpu.Engine.InlineToMemory;
 using System;
 using System.Collections.Generic;
@@ -13,7 +14,7 @@ namespace Ryujinx.Graphics.Gpu.Engine.Threed
     class ThreedClass : IDeviceState
     {
         private readonly GpuContext _context;
-        private readonly GpuChannel _channel;
+        private readonly GPFifoClass _fifoClass;
         private readonly DeviceStateWithShadow<ThreedClassState> _state;
 
         private readonly InlineToMemoryClass _i2mClass;
@@ -27,10 +28,10 @@ namespace Ryujinx.Graphics.Gpu.Engine.Threed
         /// </summary>
         /// <param name="context">GPU context</param>
         /// <param name="channel">GPU channel</param>
-        public ThreedClass(GpuContext context, GpuChannel channel)
+        public ThreedClass(GpuContext context, GpuChannel channel, GPFifoClass fifoClass)
         {
             _context = context;
-            _channel = channel;
+            _fifoClass = fifoClass;
             _state = new DeviceStateWithShadow<ThreedClassState>(new Dictionary<string, RwCallback>
             {
                 { nameof(ThreedClassState.LaunchDma), new RwCallback(LaunchDma, null) },
@@ -116,9 +117,7 @@ namespace Ryujinx.Graphics.Gpu.Engine.Threed
         /// </summary>
         public void UpdateState()
         {
-            // Make sure we are working with the latest memory mappings before binding anything.
-            _channel.MemoryManager.VirtualBufferCache.RefreshMappings();
-
+            _fifoClass.CreatePendingSyncs();
             _cbUpdater.FlushUboDirty();
             _stateUpdater.Update();
         }
@@ -175,6 +174,14 @@ namespace Ryujinx.Graphics.Gpu.Engine.Threed
         public void ForceShaderUpdate()
         {
             _stateUpdater.ForceShaderUpdate();
+        }
+
+        /// <summary>
+        /// Create any syncs from WaitForIdle command that are currently pending.
+        /// </summary>
+        public void CreatePendingSyncs()
+        {
+            _fifoClass.CreatePendingSyncs();
         }
 
         /// <summary>
@@ -495,32 +502,19 @@ namespace Ryujinx.Graphics.Gpu.Engine.Threed
         /// </summary>
         /// <param name="indexCount">Index Buffer Count</param>
         /// <param name="topology">Primitive topology</param>
-        /// <param name="indirectBufferGpuVa">GPU virtual address of the buffer with the draw parameters, such as count, first index, etc</param>
-        /// <param name="indirectBufferSize">Size of the indirect buffer in bytes</param>
-        /// <param name="parameterBufferGpuVa">GPU virtual address of the buffer with the draw count</param>
-        /// <param name="parameterBufferSize">Size of the parameter buffer in bytes</param>
+        /// <param name="indirectBuffer">GPU buffer with the draw parameters, such as count, first index, etc</param>
+        /// <param name="parameterBuffer">GPU buffer with the draw count</param>
         /// <param name="maxDrawCount">Maximum number of draws that can be made</param>
         /// <param name="stride">Distance in bytes between each element on the <paramref name="indirectBuffer"/> array</param>
         public void MultiDrawIndirectCount(
             int indexCount,
             PrimitiveTopology topology,
-            ulong indirectBufferGpuVa,
-            ulong indirectBufferSize,
-            ulong parameterBufferGpuVa,
-            ulong parameterBufferSize,
+            BufferRange indirectBuffer,
+            BufferRange parameterBuffer,
             int maxDrawCount,
             int stride)
         {
-            _drawManager.MultiDrawIndirectCount(
-                this,
-                indexCount,
-                topology,
-                indirectBufferGpuVa,
-                indirectBufferSize,
-                parameterBufferGpuVa,
-                parameterBufferSize,
-                maxDrawCount,
-                stride);
+            _drawManager.MultiDrawIndirectCount(this, indexCount, topology, indirectBuffer, parameterBuffer, maxDrawCount, stride);
         }
     }
 }
