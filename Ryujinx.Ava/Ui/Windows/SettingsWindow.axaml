@@ -31,16 +31,11 @@
             <RowDefinition />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
-        <ContentControl
+        <ContentPresenter
+            x:Name="ContentPresenter"
             Grid.Row="1"
-            Focusable="False"
             IsVisible="False"
-            KeyboardNavigation.IsTabStop="False">
-            <ui:ContentDialog Name="ContentDialog"
-                              IsPrimaryButtonEnabled="True"
-                              IsSecondaryButtonEnabled="True"
-                              IsVisible="False" />
-        </ContentControl>
+            KeyboardNavigation.IsTabStop="False"/>
         <Grid Name="Pages" IsVisible="False" Grid.Row="2">
             <ScrollViewer Name="UiPage"
                           Margin="0,0,10,0"
@@ -243,6 +238,22 @@
                             <ToggleButton Width="90" Height="27" Checked="Button_Checked" Unchecked="Button_Unchecked">
                                 <TextBlock
                                     Text="{Binding KeyboardHotkeys.ToggleMute, Mode=TwoWay, Converter={StaticResource Key}}"
+                                    TextAlignment="Center" />
+                            </ToggleButton>
+                        </StackPanel>
+                        <StackPanel Margin="10,0,0,0" Orientation="Horizontal">
+                            <TextBlock VerticalAlignment="Center" Text="{locale:Locale SettingsTabHotkeysResScaleUpHotkey}" Width="230" />
+                            <ToggleButton Width="90" Height="27" Checked="Button_Checked" Unchecked="Button_Unchecked">
+                                <TextBlock
+                                    Text="{Binding KeyboardHotkeys.ResScaleUp, Mode=TwoWay, Converter={StaticResource Key}}"
+                                    TextAlignment="Center" />
+                            </ToggleButton>
+                        </StackPanel>
+                        <StackPanel Margin="10,0,0,0" Orientation="Horizontal">
+                            <TextBlock VerticalAlignment="Center" Text="{locale:Locale SettingsTabHotkeysResScaleDownHotkey}" Width="230" />
+                            <ToggleButton Width="90" Height="27" Checked="Button_Checked" Unchecked="Button_Unchecked">
+                                <TextBlock
+                                    Text="{Binding KeyboardHotkeys.ResScaleDown, Mode=TwoWay, Converter={StaticResource Key}}"
                                     TextAlignment="Center" />
                             </ToggleButton>
                         </StackPanel>
@@ -493,43 +504,51 @@
                 VerticalScrollBarVisibility="Auto">
                 <Border>
                     <StackPanel
-                        Margin="10, 5"
+                        Margin="10,5"
                         HorizontalAlignment="Stretch"
                         Orientation="Vertical"
                         Spacing="10">
-                        <TextBlock FontWeight="Bold" Text="{locale:Locale SettingsTabGraphicsEnhancements}" />
+                        <TextBlock FontWeight="Bold" Text="{locale:Locale SettingsTabGraphicsAPI}" />
                         <StackPanel Margin="10,0,0,0" Orientation="Vertical" Spacing="10">
-                            <CheckBox IsChecked="{Binding EnableShaderCache}"
-                                  ToolTip.Tip="{locale:Locale ShaderCacheToggleTooltip}">
-                                <TextBlock Text="{locale:Locale SettingsTabGraphicsEnableShaderCache}" />
-                            </CheckBox>
                             <StackPanel Orientation="Horizontal">
-                                <TextBlock VerticalAlignment="Center"
-                                           ToolTip.Tip="{locale:Locale AnisotropyTooltip}"
-                                           Text="{locale:Locale SettingsTabGraphicsAnisotropicFiltering}"
-                                           Width="250" />
-                                <ComboBox SelectedIndex="{Binding MaxAnisotropy}"
-                                          Width="350"
-                                          HorizontalContentAlignment="Left"
-                                          ToolTip.Tip="{locale:Locale AnisotropyTooltip}">
-                                    <ComboBoxItem>
-                                        <TextBlock
-                                            Text="{locale:Locale SettingsTabGraphicsAnisotropicFilteringAuto}" />
-                                    </ComboBoxItem>
-                                    <ComboBoxItem>
-                                        <TextBlock Text="{locale:Locale SettingsTabGraphicsAnisotropicFiltering2x}" />
-                                    </ComboBoxItem>
-                                    <ComboBoxItem>
-                                        <TextBlock Text="{locale:Locale SettingsTabGraphicsAnisotropicFiltering4x}" />
-                                    </ComboBoxItem>
-                                    <ComboBoxItem>
-                                        <TextBlock Text="{locale:Locale SettingsTabGraphicsAnisotropicFiltering8x}" />
-                                    </ComboBoxItem>
-                                    <ComboBoxItem>
-                                        <TextBlock
-                                            Text="{locale:Locale SettingsTabGraphicsAnisotropicFiltering16x}" />
-                                    </ComboBoxItem>
-                                </ComboBox>
+                                    <TextBlock VerticalAlignment="Center"
+                                            ToolTip.Tip="{locale:Locale SettingsTabGraphicsBackendTooltip}"
+                                            Text="{locale:Locale SettingsTabGraphicsBackend}"
+                                            Width="250" />
+                                    <ComboBox Width="350"
+                                            HorizontalContentAlignment="Left"
+                                            ToolTip.Tip="{locale:Locale SettingsTabGraphicsBackendTooltip}"
+                                            SelectedIndex="{Binding GraphicsBackendIndex}">
+                                        <ComboBoxItem>
+                                            <TextBlock Text="Vulkan" />
+                                        </ComboBoxItem>
+                                        <ComboBoxItem>
+                                            <TextBlock Text="OpenGL" />
+                                        </ComboBoxItem>
+                                    </ComboBox>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" IsVisible="{Binding IsVulkanSelected}">
+                                    <TextBlock VerticalAlignment="Center"
+                                            ToolTip.Tip="{locale:Locale SettingsTabGraphicsPreferredGpuTooltip}"
+                                            Text="{locale:Locale SettingsTabGraphicsPreferredGpu}"
+                                            Width="250" />
+                                    <ComboBox Width="350"
+                                            HorizontalContentAlignment="Left"
+                                            ToolTip.Tip="{locale:Locale SettingsTabGraphicsPreferredGpuTooltip}"
+                                            SelectedIndex="{Binding PreferredGpuIndex}"
+                                            Items="{Binding AvailableGpus}"/>
+                                </StackPanel>
+                                <Separator Height="1" />
+                            <TextBlock FontWeight="Bold" Text="{locale:Locale SettingsTabGraphicsFeatures}" />
+                            <StackPanel Orientation="Vertical">
+                                <CheckBox IsChecked="{Binding EnableShaderCache}"
+                                    ToolTip.Tip="{locale:Locale ShaderCacheToggleTooltip}">
+                                    <TextBlock Text="{locale:Locale SettingsTabGraphicsEnableShaderCache}" />
+                                </CheckBox>
+                                <CheckBox IsChecked="{Binding EnableTextureRecompression}"
+                                    ToolTip.Tip="{locale:Locale SettingsEnableTextureRecompressionTooltip}">
+                                    <TextBlock Text="{locale:Locale SettingsEnableTextureRecompression}" />
+                                </CheckBox>
                             </StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock VerticalAlignment="Center"
@@ -571,6 +590,34 @@
                             </StackPanel>
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock VerticalAlignment="Center"
+                                           ToolTip.Tip="{locale:Locale AnisotropyTooltip}"
+                                           Text="{locale:Locale SettingsTabGraphicsAnisotropicFiltering}"
+                                           Width="250" />
+                                <ComboBox SelectedIndex="{Binding MaxAnisotropy}"
+                                          Width="350"
+                                          HorizontalContentAlignment="Left"
+                                          ToolTip.Tip="{locale:Locale AnisotropyTooltip}">
+                                    <ComboBoxItem>
+                                        <TextBlock
+                                            Text="{locale:Locale SettingsTabGraphicsAnisotropicFilteringAuto}" />
+                                    </ComboBoxItem>
+                                    <ComboBoxItem>
+                                        <TextBlock Text="{locale:Locale SettingsTabGraphicsAnisotropicFiltering2x}" />
+                                    </ComboBoxItem>
+                                    <ComboBoxItem>
+                                        <TextBlock Text="{locale:Locale SettingsTabGraphicsAnisotropicFiltering4x}" />
+                                    </ComboBoxItem>
+                                    <ComboBoxItem>
+                                        <TextBlock Text="{locale:Locale SettingsTabGraphicsAnisotropicFiltering8x}" />
+                                    </ComboBoxItem>
+                                    <ComboBoxItem>
+                                        <TextBlock
+                                            Text="{locale:Locale SettingsTabGraphicsAnisotropicFiltering16x}" />
+                                    </ComboBoxItem>
+                                </ComboBox>
+                            </StackPanel>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock VerticalAlignment="Center"
                                            ToolTip.Tip="{locale:Locale AspectRatioTooltip}"
                                            Text="{locale:Locale SettingsTabGraphicsAspectRatio}"
                                            Width="250" />
@@ -599,8 +646,6 @@
                                 </ComboBox>
                             </StackPanel>
                         </StackPanel>
-                        <Separator Height="1" />
-                        <TextBlock FontWeight="Bold" Text="{locale:Locale SettingsTabGraphicsFeatures}" />
                         <StackPanel
                             Margin="10,0,0,0"
                             HorizontalAlignment="Stretch"

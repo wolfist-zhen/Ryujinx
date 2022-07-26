@@ -1,4 +1,5 @@
 using Ryujinx.Graphics.Shader.IntermediateRepresentation;
+using Ryujinx.Graphics.Shader.StructuredIr;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -360,12 +361,6 @@ namespace Ryujinx.Graphics.Shader.Translation
             UsedFeatures |= flags;
         }
 
-        public Operand CreateCbuf(int slot, int offset)
-        {
-            SetUsedConstantBuffer(slot);
-            return OperandHelper.Cbuf(slot, offset);
-        }
-
         public void SetUsedConstantBuffer(int slot)
         {
             _usedConstantBuffers |= 1 << slot;
@@ -587,7 +582,7 @@ namespace Ryujinx.Graphics.Shader.Translation
             return _cachedImageDescriptors ??= GetTextureOrImageDescriptors(_usedImages, GpuAccessor.QueryBindingImage);
         }
 
-        private static TextureDescriptor[] GetTextureOrImageDescriptors(Dictionary<TextureInfo, TextureMeta> dict, Func<int, int> getBindingCallback)
+        private static TextureDescriptor[] GetTextureOrImageDescriptors(Dictionary<TextureInfo, TextureMeta> dict, Func<int, bool, int> getBindingCallback)
         {
             var descriptors = new TextureDescriptor[dict.Count];
 
@@ -597,7 +592,8 @@ namespace Ryujinx.Graphics.Shader.Translation
                 var info = kv.Key;
                 var meta = kv.Value;
 
-                int binding = getBindingCallback(i);
+                bool isBuffer = (meta.Type & SamplerType.Mask) == SamplerType.TextureBuffer;
+                int binding = getBindingCallback(i, isBuffer);
 
                 descriptors[i] = new TextureDescriptor(binding, meta.Type, info.Format, info.CbufSlot, info.Handle);
                 descriptors[i].SetFlag(meta.UsageFlags);
@@ -605,6 +601,53 @@ namespace Ryujinx.Graphics.Shader.Translation
             }
 
             return descriptors;
+        }
+
+        public (TextureDescriptor, int) FindTextureDescriptor(AstTextureOperation texOp)
+        {
+            TextureDescriptor[] descriptors = GetTextureDescriptors();
+
+            for (int i = 0; i < descriptors.Length; i++)
+            {
+                var descriptor = descriptors[i];
+
+                if (descriptor.CbufSlot == texOp.CbufSlot &&
+                    descriptor.HandleIndex == texOp.Handle &&
+                    descriptor.Format == texOp.Format)
+                {
+                    return (descriptor, i);
+                }
+            }
+
+            return (default, -1);
+        }
+
+        private static int FindDescriptorIndex(TextureDescriptor[] array, AstTextureOperation texOp)
+        {
+            for (int i = 0; i < array.Length; i++)
+            {
+                var descriptor = array[i];
+
+                if (descriptor.Type == texOp.Type &&
+                    descriptor.CbufSlot == texOp.CbufSlot &&
+                    descriptor.HandleIndex == texOp.Handle &&
+                    descriptor.Format == texOp.Format)
+                {
+                    return i;
+                }
+            }
+
+            return -1;
+        }
+
+        public int FindTextureDescriptorIndex(AstTextureOperation texOp)
+        {
+            return FindDescriptorIndex(GetTextureDescriptors(), texOp);
+        }
+
+        public int FindImageDescriptorIndex(AstTextureOperation texOp)
+        {
+            return FindDescriptorIndex(GetImageDescriptors(), texOp);
         }
     }
 }

@@ -122,7 +122,7 @@
   "SettingsTabSystemExpandDramSize": "Expandir memória para 6GB",
   "SettingsTabSystemIgnoreMissingServices": "Ignorar serviços não implementados",
   "SettingsTabGraphics": "Gráficos",
-  "SettingsTabGraphicsEnhancements": "Melhorias",
+  "SettingsTabGraphicsAPI": "API gráfica",
   "SettingsTabGraphicsEnableShaderCache": "Habilitar cache de shader",
   "SettingsTabGraphicsAnisotropicFiltering": "Filtragem anisotrópica:",
   "SettingsTabGraphicsAnisotropicFilteringAuto": "Auto",
@@ -416,7 +416,7 @@
   "CommonFavorite": "Favorito",
   "OrderAscending": "Ascendente",
   "OrderDescending": "Descendente",
-  "SettingsTabGraphicsFeatures": "Recursos",
+  "SettingsTabGraphicsFeatures": "Recursos & Melhorias",
   "ErrorWindowTitle": "Janela de erro",
   "ToggleDiscordTooltip": "Habilita ou desabilita Discord Rich Presence",
   "AddGameDirBoxTooltip": "Escreva um diretório de jogo para adicionar à lista",
@@ -554,5 +554,7 @@
   "ControllerMotionTitle": "Configurações do controle de movimento",
   "ControllerRumbleTitle": "Configurações de vibração",
   "SettingsSelectThemeFileDialogTitle" : "Selecionar arquivo do tema",
-  "SettingsXamlThemeFile" : "Arquivo de tema Xaml"
+  "SettingsXamlThemeFile" : "Arquivo de tema Xaml",
+  "SettingsTabHotkeysResScaleUpHotkey": "Aumentar a resolução:",
+  "SettingsTabHotkeysResScaleDownHotkey": "Diminuir a resolução:"
 }

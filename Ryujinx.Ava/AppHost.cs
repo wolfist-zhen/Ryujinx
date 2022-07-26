@@ -1,5 +1,6 @@
 ﻿using ARMeilleure.Translation;
 using ARMeilleure.Translation.PTC;
+using Avalonia;
 using Avalonia.Input;
 using Avalonia.Threading;
 using LibHac.Tools.FsSystem;
@@ -13,6 +14,7 @@ using Ryujinx.Ava.Common.Locale;
 using Ryujinx.Ava.Input;
 using Ryujinx.Ava.Ui.Controls;
 using Ryujinx.Ava.Ui.Models;
+using Ryujinx.Ava.Ui.Vulkan;
 using Ryujinx.Ava.Ui.Windows;
 using Ryujinx.Common;
 using Ryujinx.Common.Configuration;
@@ -22,6 +24,7 @@ using Ryujinx.Graphics.GAL;
 using Ryujinx.Graphics.GAL.Multithreading;
 using Ryujinx.Graphics.Gpu;
 using Ryujinx.Graphics.OpenGL;
+using Ryujinx.Graphics.Vulkan;
 using Ryujinx.HLE.FileSystem;
 using Ryujinx.HLE.HOS;
 using Ryujinx.HLE.HOS.Services.Account.Acc;
@@ -53,6 +56,7 @@ namespace Ryujinx.Ava
     internal class AppHost
     {
         private const int CursorHideIdleTime = 8; // Hide Cursor seconds
+        private const float MaxResolutionScale = 4.0f; // Max resolution hotkeys can scale to before wrapping.
 
         private static readonly Cursor InvisibleCursor = new Cursor(StandardCursorType.None);
 
@@ -365,6 +369,7 @@ namespace Ryujinx.Ava
             ConfigurationState.Instance.System.IgnoreMissingServices.Event -= UpdateIgnoreMissingServicesState;
             ConfigurationState.Instance.Graphics.AspectRatio.Event -= UpdateAspectRatioState;
             ConfigurationState.Instance.System.EnableDockedMode.Event -= UpdateDockedModeState;
+            ConfigurationState.Instance.System.AudioVolume.Event -= UpdateAudioVolumeState;
 
             _gpuCancellationTokenSource.Cancel();
             _gpuCancellationTokenSource.Dispose();
@@ -417,10 +422,12 @@ namespace Ryujinx.Ava
                 {
                     if (userError == UserError.NoFirmware)
                     {
-                        string message = string.Format(LocaleManager.Instance["DialogFirmwareInstallEmbeddedMessage"], firmwareVersion.VersionString);
+                        string message = string.Format(LocaleManager.Instance["DialogFirmwareInstallEmbeddedMessage"],
+                            firmwareVersion.VersionString);
 
-                        UserResult result = await ContentDialogHelper.CreateConfirmationDialog(_parent,
-                            LocaleManager.Instance["DialogFirmwareNoFirmwareInstalledMessage"], message, LocaleManager.Instance["InputDialogYes"], LocaleManager.Instance["InputDialogNo"], "");
+                        UserResult result = await ContentDialogHelper.CreateConfirmationDialog(
+                            LocaleManager.Instance["DialogFirmwareNoFirmwareInstalledMessage"], message,
+                            LocaleManager.Instance["InputDialogYes"], LocaleManager.Instance["InputDialogNo"], "");
 
                         if (result != UserResult.Yes)
                         {
@@ -450,12 +457,12 @@ namespace Ryujinx.Ava
 
                         string message = string.Format(LocaleManager.Instance["DialogFirmwareInstallEmbeddedSuccessMessage"], firmwareVersion.VersionString);
 
-                        await ContentDialogHelper.CreateInfoDialog(_parent,
-                                                             string.Format(LocaleManager.Instance["DialogFirmwareInstalledMessage"], firmwareVersion.VersionString),
-                                                             message,
-                                                             LocaleManager.Instance["InputDialogOk"],
-                                                             "",
-                                                             LocaleManager.Instance["RyujinxInfo"]);
+                        await ContentDialogHelper.CreateInfoDialog(
+                            string.Format(LocaleManager.Instance["DialogFirmwareInstalledMessage"], firmwareVersion.VersionString),
+                            message,
+                            LocaleManager.Instance["InputDialogOk"],
+                            "",
+                            LocaleManager.Instance["RyujinxInfo"]);
                     }
                 }
                 else
@@ -584,7 +591,23 @@ namespace Ryujinx.Ava
         {
             VirtualFileSystem.ReloadKeySet();
 
-            IRenderer renderer = new Renderer();
+            IRenderer renderer;
+
+            if (Program.UseVulkan)
+            {
+                var vulkan = AvaloniaLocator.Current.GetService<VulkanPlatformInterface>();
+                renderer = new VulkanRenderer(vulkan.Instance.InternalHandle,
+                    vulkan.Device.InternalHandle,
+                    vulkan.PhysicalDevice.InternalHandle,
+                    vulkan.Device.Queue.InternalHandle,
+                    vulkan.PhysicalDevice.QueueFamilyIndex,
+                    vulkan.Device.Lock);
+            }
+            else
+            {
+                renderer = new OpenGLRenderer();
+            }
+
             IHardwareDeviceDriver deviceDriver = new DummyHardwareDeviceDriver();
 
             BackendThreading threadingMode = ConfigurationState.Instance.Graphics.BackendThreading;
@@ -792,9 +815,12 @@ namespace Ryujinx.Ava
 
             _renderer.ScreenCaptured += Renderer_ScreenCaptured;
 
-            (_renderer as Renderer).InitializeBackgroundContext(SPBOpenGLContext.CreateBackgroundContext(Renderer.GameContext));
+            if (!Program.UseVulkan)
+            {
+                (_renderer as OpenGLRenderer).InitializeBackgroundContext(SPBOpenGLContext.CreateBackgroundContext((Renderer as OpenGLRendererControl).GameContext));
 
-            Renderer.MakeCurrent();
+                Renderer.MakeCurrent();
+            }
 
             Device.Gpu.Renderer.Initialize(_glLogLevel);
 
@@ -853,16 +879,15 @@ namespace Ryujinx.Ava
                 dockedMode += $" ({scale}x)";
             }
 
-            string vendor = _renderer is Renderer renderer ? renderer.GpuVendor : "";
-
             StatusUpdatedEvent?.Invoke(this, new StatusUpdatedEventArgs(
                 Device.EnableDeviceVsync,
                 Device.GetVolume(),
+                Program.UseVulkan ? "Vulkan" : "OpenGL",
                 dockedMode,
                 ConfigurationState.Instance.Graphics.AspectRatio.Value.ToText(),
                 LocaleManager.Instance["Game"] + $": {Device.Statistics.GetGameFrameRate():00.00} FPS ({Device.Statistics.GetGameFrameTime():00.00} ms)",
                 $"FIFO: {Device.Statistics.GetFifoPercent():00.00} %",
-                $"GPU: {vendor}"));
+                $"GPU: {_renderer.GetHardwareInfo().GpuVendor}"));
 
             Renderer.Present(image);
         }
@@ -879,7 +904,7 @@ namespace Ryujinx.Ava
                 }
 
                 _dialogShown = true;
-                shouldExit = await ContentDialogHelper.CreateStopEmulationDialog(_parent);
+                shouldExit = await ContentDialogHelper.CreateStopEmulationDialog();
 
                 _dialogShown = false;
             }
@@ -896,7 +921,7 @@ namespace Ryujinx.Ava
             {
                 Dispatcher.UIThread.Post(() =>
                 {
-                    _parent.Cursor =  _isMouseInRenderer ? InvisibleCursor : Cursor.Default;
+                    _parent.Cursor = _isMouseInRenderer ? InvisibleCursor : Cursor.Default;
                 });
             }
             else
@@ -974,6 +999,13 @@ namespace Ryujinx.Ava
 
                             _parent.ViewModel.Volume = Device.GetVolume();
                             break;
+                        case KeyboardHotkeyState.ResScaleUp:
+                            GraphicsConfig.ResScale = GraphicsConfig.ResScale % MaxResolutionScale + 1;
+                            break;
+                        case KeyboardHotkeyState.ResScaleDown:
+                            GraphicsConfig.ResScale =
+                            (MaxResolutionScale + GraphicsConfig.ResScale - 2) % MaxResolutionScale + 1;
+                            break;
                         case KeyboardHotkeyState.None:
                             (_keyboardInterface as AvaloniaKeyboard).Clear();
                             break;
@@ -1030,6 +1062,14 @@ namespace Ryujinx.Ava
             else if (_keyboardInterface.IsPressed((Key)ConfigurationState.Instance.Hid.Hotkeys.Value.ToggleMute))
             {
                 state = KeyboardHotkeyState.ToggleMute;
+            }
+            else if (_keyboardInterface.IsPressed((Key)ConfigurationState.Instance.Hid.Hotkeys.Value.ResScaleUp))
+            {
+                state = KeyboardHotkeyState.ResScaleUp;
+            }
+            else if (_keyboardInterface.IsPressed((Key)ConfigurationState.Instance.Hid.Hotkeys.Value.ResScaleDown))
+            {
+                state = KeyboardHotkeyState.ResScaleDown;
             }
 
             return state;

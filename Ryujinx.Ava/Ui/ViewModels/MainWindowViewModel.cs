@@ -197,6 +197,7 @@ namespace Ryujinx.Ava.Ui.ViewModels
         private string _pauseKey = "F5";
         private string _screenshotkey = "F8";
         private float _volume;
+        private string _backendText;
 
         public ApplicationData SelectedApplication
         {
@@ -335,12 +336,23 @@ namespace Ryujinx.Ava.Ui.ViewModels
             }
         }
 
-        public string GpuStatusText
+        public string GpuNameText
         {
             get => _gpuStatusText;
             set
             {
                 _gpuStatusText = value;
+
+                OnPropertyChanged();
+            }
+        }
+
+        public string BackendText
+        {
+            get => _backendText;
+            set
+            {
+                _backendText = value;
 
                 OnPropertyChanged();
             }
@@ -708,7 +720,7 @@ namespace Ryujinx.Ava.Ui.ViewModels
             {
                 return;
             }
-            
+
             if (_owner.AppHost.Device.System.SearchingForAmiibo(out int deviceId))
             {
                 string titleId = _owner.AppHost.Device.Application.TitleIdText.ToUpper();
@@ -975,9 +987,7 @@ namespace Ryujinx.Ava.Ui.ViewModels
 
         public async void ManageProfiles()
         {
-            UserProfileWindow window = new(_owner.AccountManager, _owner.ContentManager, _owner.VirtualFileSystem);
-
-            await window.ShowDialog(_owner);
+            await NavigationDialogHost.Show(_owner.AccountManager, _owner.ContentManager, _owner.VirtualFileSystem);
         }
 
         public async void OpenAboutWindow()
@@ -1054,8 +1064,7 @@ namespace Ryujinx.Ava.Ui.ViewModels
                     {
                         Dispatcher.UIThread.Post(async () =>
                         {
-                            await ContentDialogHelper.CreateErrorDialog(_owner,
-                                LocaleManager.Instance["DialogRyujinxErrorMessage"], LocaleManager.Instance["DialogInvalidTitleIdErrorMessage"]);
+                            await ContentDialogHelper.CreateErrorDialog(LocaleManager.Instance["DialogRyujinxErrorMessage"], LocaleManager.Instance["DialogInvalidTitleIdErrorMessage"]);
                         });
 
                         return;
@@ -1138,7 +1147,7 @@ namespace Ryujinx.Ava.Ui.ViewModels
                 DirectoryInfo backupDir = new(Path.Combine(AppDataManager.GamesDirPath, selection.TitleId, "cache", "cpu", "1"));
 
                 // FIXME: Found a way to reproduce the bold effect on the title name (fork?).
-                UserResult result = await ContentDialogHelper.CreateConfirmationDialog(_owner, LocaleManager.Instance["DialogWarning"],
+                UserResult result = await ContentDialogHelper.CreateConfirmationDialog(LocaleManager.Instance["DialogWarning"],
                     string.Format(LocaleManager.Instance["DialogPPTCDeletionMessage"], selection.TitleName), LocaleManager.Instance["InputDialogYes"], LocaleManager.Instance["InputDialogNo"], LocaleManager.Instance["RyujinxConfirm"]);
 
                 List<FileInfo> cacheFiles = new();
@@ -1163,7 +1172,7 @@ namespace Ryujinx.Ava.Ui.ViewModels
                         }
                         catch (Exception e)
                         {
-                            await ContentDialogHelper.CreateErrorDialog(_owner, string.Format(LocaleManager.Instance["DialogPPTCDeletionErrorMessage"], file.Name, e));
+                            await ContentDialogHelper.CreateErrorDialog(string.Format(LocaleManager.Instance["DialogPPTCDeletionErrorMessage"], file.Name, e));
                         }
                     }
                 }
@@ -1201,7 +1210,7 @@ namespace Ryujinx.Ava.Ui.ViewModels
                 DirectoryInfo shaderCacheDir = new(Path.Combine(AppDataManager.GamesDirPath, selection.TitleId, "cache", "shader"));
 
                 // FIXME: Found a way to reproduce the bold effect on the title name (fork?).
-                UserResult result = await ContentDialogHelper.CreateConfirmationDialog(_owner, LocaleManager.Instance["DialogWarning"],
+                UserResult result = await ContentDialogHelper.CreateConfirmationDialog(LocaleManager.Instance["DialogWarning"],
                     string.Format(LocaleManager.Instance["DialogShaderDeletionMessage"], selection.TitleName), LocaleManager.Instance["InputDialogYes"], LocaleManager.Instance["InputDialogNo"], LocaleManager.Instance["RyujinxConfirm"]);
 
                 List<DirectoryInfo> oldCacheDirectories = new List<DirectoryInfo>();
@@ -1224,7 +1233,7 @@ namespace Ryujinx.Ava.Ui.ViewModels
                         }
                         catch (Exception e)
                         {
-                            await ContentDialogHelper.CreateErrorDialog(_owner, string.Format(LocaleManager.Instance["DialogPPTCDeletionErrorMessage"], directory.Name, e));
+                            await ContentDialogHelper.CreateErrorDialog(string.Format(LocaleManager.Instance["DialogPPTCDeletionErrorMessage"], directory.Name, e));
                         }
                     }
                 }
@@ -1237,7 +1246,7 @@ namespace Ryujinx.Ava.Ui.ViewModels
                     }
                     catch (Exception e)
                     {
-                        await ContentDialogHelper.CreateErrorDialog(_owner, string.Format(LocaleManager.Instance["ShaderCachePurgeError"], file.Name, e));
+                        await ContentDialogHelper.CreateErrorDialog(string.Format(LocaleManager.Instance["ShaderCachePurgeError"], file.Name, e));
                     }
                 }
             }
@@ -1316,12 +1325,11 @@ namespace Ryujinx.Ava.Ui.ViewModels
                 Task.Run(() =>
                 {
                     if (!ulong.TryParse(selection.TitleId, NumberStyles.HexNumber, CultureInfo.InvariantCulture,
-                       out ulong titleIdNumber))
+                        out ulong titleIdNumber))
                     {
                         Dispatcher.UIThread.Post(async () =>
                         {
-                            await ContentDialogHelper.CreateErrorDialog(_owner,
-                                LocaleManager.Instance["DialogRyujinxErrorMessage"], LocaleManager.Instance["DialogInvalidTitleIdErrorMessage"]);
+                            await ContentDialogHelper.CreateErrorDialog(LocaleManager.Instance["DialogRyujinxErrorMessage"], LocaleManager.Instance["DialogInvalidTitleIdErrorMessage"]);
                         });
 
                         return;
@@ -1342,12 +1350,11 @@ namespace Ryujinx.Ava.Ui.ViewModels
                 Task.Run(() =>
                 {
                     if (!ulong.TryParse(selection.TitleId, NumberStyles.HexNumber, CultureInfo.InvariantCulture,
-                       out ulong titleIdNumber))
+                        out ulong titleIdNumber))
                     {
                         Dispatcher.UIThread.Post(async () =>
                         {
-                            await ContentDialogHelper.CreateErrorDialog(_owner,
-                                LocaleManager.Instance["DialogRyujinxErrorMessage"], LocaleManager.Instance["DialogInvalidTitleIdErrorMessage"]);
+                            await ContentDialogHelper.CreateErrorDialog(LocaleManager.Instance["DialogRyujinxErrorMessage"], LocaleManager.Instance["DialogInvalidTitleIdErrorMessage"]);
                         });
 
                         return;
@@ -1406,7 +1413,7 @@ namespace Ryujinx.Ava.Ui.ViewModels
 
                 if (firmwareVersion == null)
                 {
-                    await ContentDialogHelper.CreateErrorDialog(_owner, string.Format(LocaleManager.Instance["DialogFirmwareInstallerFirmwareNotFoundErrorMessage"], filename));
+                    await ContentDialogHelper.CreateErrorDialog(string.Format(LocaleManager.Instance["DialogFirmwareInstallerFirmwareNotFoundErrorMessage"], filename));
 
                     return;
                 }
@@ -1426,7 +1433,6 @@ namespace Ryujinx.Ava.Ui.ViewModels
                 dialogMessage += LocaleManager.Instance["DialogFirmwareInstallerFirmwareInstallConfirmMessage"];
 
                 UserResult result = await ContentDialogHelper.CreateConfirmationDialog(
-                    _owner,
                     dialogTitle,
                     dialogMessage,
                     LocaleManager.Instance["InputDialogYes"],
@@ -1456,7 +1462,7 @@ namespace Ryujinx.Ava.Ui.ViewModels
 
                                 string message = string.Format(LocaleManager.Instance["DialogFirmwareInstallerFirmwareInstallSuccessMessage"], firmwareVersion.VersionString);
 
-                                await ContentDialogHelper.CreateInfoDialog(_owner, dialogTitle, message, LocaleManager.Instance["InputDialogOk"], "", LocaleManager.Instance["RyujinxInfo"]);
+                                await ContentDialogHelper.CreateInfoDialog(dialogTitle, message, LocaleManager.Instance["InputDialogOk"], "", LocaleManager.Instance["RyujinxInfo"]);
                                 Logger.Info?.Print(LogClass.Application, message);
 
                                 // Purge Applet Cache.
@@ -1475,7 +1481,7 @@ namespace Ryujinx.Ava.Ui.ViewModels
                             {
                                 waitingDialog.Close();
 
-                                await ContentDialogHelper.CreateErrorDialog(_owner, ex.Message);
+                                await ContentDialogHelper.CreateErrorDialog(ex.Message);
                             });
                         }
                         finally
@@ -1496,7 +1502,7 @@ namespace Ryujinx.Ava.Ui.ViewModels
             }
             catch (Exception ex)
             {
-                await ContentDialogHelper.CreateErrorDialog(_owner, ex.Message);
+                await ContentDialogHelper.CreateErrorDialog(ex.Message);
             }
         }
 
